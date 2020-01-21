@@ -64,6 +64,9 @@
 ;; Traverses the 'code' in a given line of 'code' and returns it as a list
 (define (program-iterator construct)
     (cond
+    ((pair? (car construct))
+        (printf "~a (pair)~n" (car construct))
+        (save-program construct))
     ((null? (cdr construct))
         (printf "~a (end)~n" (car construct))
         (cons (car construct) null))
@@ -76,18 +79,40 @@
 (define (save-program program)
     (cond 
     ((not (null? (car (car program))))
-        (if (not (null? (cdr program))) 
+        (if (not (null? (cdr program)))
             (cons (program-iterator (car program)) (save-program (cdr program)))
-            (cons (program-iterator (car program)) null)))
-    (else
-        (printf "bye!"))))
+            (cons (program-iterator (car program)) null)))))
+
+(define (top-traversal-iterator list-construct)
+    (cond 
+        ((and (not (null? (cdr list-construct)))
+              (not (null? (cdr (cdr list-construct)))) 
+              (null? (cdr (cdr (cdr list-construct)))))
+            (printf "~a (retreived)~n" (car (cdr list-construct)))
+            (car (cdr list-construct)))
+        ((and (not (null? (cdr list-construct)))
+              (null? (cdr (cdr list-construct)))
+              (not (pair? (car (cdr list-construct)))))
+            (printf "~a (retreived2)~n" (car (cdr list-construct)))
+            (car (cdr list-construct)))))
+
+(define (top-traversal program-list)
+    (cond ((not (null? (car (car program-list))))
+        (cond 
+            ((not (null? (cdr program-list)))
+                ;;(printf "~a (test)~n" (cdr program-list))
+                (top-traversal-iterator (car program-list))
+                (top-traversal (cdr program-list)))
+            (else
+                (printf "~a (test)~n" (car program-list))
+                (top-traversal-iterator (car program-list)))))))
 
 (define (main arglist)
     (if (or (null? arglist) (not (null? (cdr arglist))))
         (usage-exit)
         (let* ((sbprogfile (car arglist))
                (program (readlist-from-inputfile sbprogfile)))
-              (save-program program))))
+              (top-traversal (save-program program)))))
 
 (if (terminal-port? *stdin*)
     (main *arg-list*)
