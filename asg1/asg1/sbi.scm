@@ -61,58 +61,129 @@
 ;;    (for-each (lambda (line) (for-each (lambda (word) (printf "~a~n" word)) line)) program))
 
 
-;; Traverses the 'code' in a given line of 'code' and returns it as a list
-(define (program-iterator construct)
-    (cond
-    ((pair? (car construct))
-        (printf "~a (pair)~n" (car construct))
-        (save-program construct))
-    ((null? (cdr construct))
-        (printf "~a (end)~n" (car construct))
-        (cons (car construct) null))
-    (else
-        (printf "~a~n" (car construct))
-        (cons (car construct)
-            (program-iterator (cdr construct))))))
+;; (depricated) Traverses the 'code' in a given line of 'code' and returns it as a list
+;;(define (program-iterator construct)
+;;    (cond
+;;    ((pair? (car construct))
+;;        (printf "~a (pair)~n" (car construct))
+;;        (save-program construct))
+;;    ((null? (cdr construct))
+;;        (printf "~a (end)~n" (car construct))
+;;        (cons (car construct) null))
+;;    (else
+;;        (printf "~a~n" (car construct))
+;;        (cons (car construct)
+;;            (program-iterator (cdr construct))))))
 
-;; Traverses the lines of 'code' in a given file and returns them as a list
-(define (save-program program)
-    (cond 
-    ((not (null? (car (car program))))
-        (if (not (null? (cdr program)))
-            (cons (program-iterator (car program)) (save-program (cdr program)))
-            (cons (program-iterator (car program)) null)))))
+;; (depricated) Traverses the lines of 'code' in a given file and returns them as a list
+;;(define (save-program program)
+;;    (cond 
+;;    ((not (null? (car (car program))))
+;;        (if (not (null? (cdr program)))
+;;            (cons (program-iterator (car program)) (save-program (cdr program)))
+;;            (cons (program-iterator (car program)) null)))))
 
-(define (top-traversal-iterator list-construct)
+;; Create *label-table*
+(define *label-table* (make-hash))
+
+;; Creates and entry in the *label-table* if it finds a label
+(define (top-traversal-iterator list-construct top-node)
     (cond 
         ((and (not (null? (cdr list-construct)))
               (not (null? (cdr (cdr list-construct)))) 
               (null? (cdr (cdr (cdr list-construct)))))
-            (printf "~a (retreived)~n" (car (cdr list-construct)))
-            (car (cdr list-construct)))
+            ;;(printf "~a (retreived)~n" (car (cdr list-construct)))
+            (hash-set! *label-table* (car (cdr list-construct)) top-node))
         ((and (not (null? (cdr list-construct)))
               (null? (cdr (cdr list-construct)))
               (not (pair? (car (cdr list-construct)))))
-            (printf "~a (retreived2)~n" (car (cdr list-construct)))
-            (car (cdr list-construct)))))
+            ;;(printf "~a (retreived2)~n" (car (cdr list-construct)))
+            (hash-set! *label-table* (car (cdr list-construct)) top-node))))
 
+;; Scans the top level lines of the program
 (define (top-traversal program-list)
     (cond ((not (null? (car (car program-list))))
         (cond 
             ((not (null? (cdr program-list)))
                 ;;(printf "~a (test)~n" (cdr program-list))
-                (top-traversal-iterator (car program-list))
+                (top-traversal-iterator (car program-list) program-list)
                 (top-traversal (cdr program-list)))
             (else
-                (printf "~a (test)~n" (car program-list))
-                (top-traversal-iterator (car program-list)))))))
+                ;;(printf "~a (test)~n" (car program-list))
+                (top-traversal-iterator (car program-list) program-list))))))
+
+;; Create *function-table*
+(define *function-table* (make-hash))
+
+(define (interpret-print print-statement)
+    ;;(printf "~a (print-start)~n" print-statement)
+    (cond
+    ((pair? (car (cdr print-statement)))
+        (printf "~a (p-pair)~n" (program-iterator (cdr print-statement))))
+    ((null? (cdr (cdr print-statement)))
+        (printf "~a (p-null)~n" (car (cdr print-statement))))
+    (else
+        (printf "~a" (car (cdr print-statement)))
+        (interpret-print (cdr print-statement)))))
+
+(define (interpret-+ equation)
+    (cond
+    ((and (pair? (car (cdr equation))) (pair? (cdr (cdr equation))))
+        (printf "~a (+-pair1)~n" (cdr equation))
+        (+ (program-iterator (cdr equation))
+        (interpret-+ (cdr equation))))
+    ((pair? (car (cdr equation)))
+        (printf "~a (+-pair2)~n" (cdr equation))
+        (program-iterator (cdr equation)))
+    ((null? (cdr (cdr equation)))
+        (printf "~a (+-null)~n" (car (cdr equation)))
+        (car (cdr equation)))
+    (else
+        (+ (car (cdr equation)) (interpret-+ (cdr equation))))
+    ))
+
+(for-each
+    (lambda (pair)
+        (hash-set! *function-table* (car pair) (cadr pair)))
+    `(
+        (print  ,interpret-print)
+        (+      ,interpret-+)
+        ;(-)
+        ;(*)
+        ;(/)
+    ))
+
+;; (depricated) Traverses the 'code' in a given line of 'code'
+(define (program-iterator construct)
+    (cond
+    ((pair? (car construct))
+        ;;(printf "~a (pair)~n" (car construct))
+        ((hash-ref *function-table* (car (car construct))) (car construct)))
+    ((null? (cdr construct))
+        ;;(printf "~a (end)~n" (car construct))
+        (cdr construct))
+    (else
+        ;;(printf "~a~n" (car construct))
+        (program-iterator (cdr construct)))))
+
+;; (depricated) Traverses the lines of 'code' in a given file
+(define (interpret-program program)
+    (cond 
+    ((not (null? (car (car program))))
+        (cond 
+        ((not (null? (cdr program)))
+            (program-iterator (car program))
+            (interpret-program (cdr program)))
+        (else
+            (program-iterator (car program)))))))
 
 (define (main arglist)
     (if (or (null? arglist) (not (null? (cdr arglist))))
         (usage-exit)
         (let* ((sbprogfile (car arglist))
                (program (readlist-from-inputfile sbprogfile)))
-              (top-traversal (save-program program)))))
+              (top-traversal program)
+              (interpret-program program))))
 
 (if (terminal-port? *stdin*)
     (main *arg-list*)
