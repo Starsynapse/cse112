@@ -131,7 +131,7 @@
     ((and (pair? (car (cdr equation))) (pair? (cdr (cdr equation))))
         (printf "~a (+-pair1)~n" (cdr equation))
         (+ (program-iterator (cdr equation))
-        (interpret-+ (cdr equation))))
+        (program-iterator (cdr (cdr equation)))))
     ((pair? (car (cdr equation)))
         (printf "~a (+-pair2)~n" (cdr equation))
         (program-iterator (cdr equation)))
