@@ -1,5 +1,7 @@
 #!/afs/cats.ucsc.edu/courses/cse112-wm/usr/racket/bin/mzscheme -qr
-#lang racket
+;; ezamora9
+;;
+;;#lang racket
 ;; $Id: sbi.scm,v 1.19 2020-01-14 16:58:47-08 - - $
 ;;
 ;; NAME
@@ -118,6 +120,8 @@
 (define (interpret-print print-statement)
     ;;(printf "~a (print-start)~n" print-statement)
     (cond
+    ((null? (cdr print-statement))
+        (printf "~n"))
     ((pair? (car (cdr print-statement)))
         (printf "~a (p-pair)~n" (program-iterator (cdr print-statement))))
     ((null? (cdr (cdr print-statement)))
@@ -129,18 +133,95 @@
 (define (interpret-+ equation)
     (cond
     ((and (pair? (car (cdr equation))) (pair? (cdr (cdr equation))))
-        (printf "~a (+-pair1)~n" (cdr equation))
+        ;;(printf "~a (+-pair1)~n" (cdr equation))
         (+ (program-iterator (cdr equation))
         (program-iterator (cdr (cdr equation)))))
     ((pair? (car (cdr equation)))
-        (printf "~a (+-pair2)~n" (cdr equation))
+        ;;(printf "~a (+-pair2)~n" (cdr equation))
         (program-iterator (cdr equation)))
     ((null? (cdr (cdr equation)))
-        (printf "~a (+-null)~n" (car (cdr equation)))
+        ;;(printf "~a (+-null)~n" (car (cdr equation)))
         (car (cdr equation)))
     (else
-        (+ (car (cdr equation)) (interpret-+ (cdr equation))))
-    ))
+        (+ (car (cdr equation)) (interpret-+ (cdr equation))))))
+
+(define (interpret-- equation)
+    (cond
+    ((and (pair? (car (cdr equation))) (pair? (cdr (cdr equation))))
+        ;;(printf "~a (--pair1)~n" (cdr equation))
+        (- (program-iterator (cdr equation))
+        (program-iterator (cdr (cdr equation)))))
+    ((pair? (car (cdr equation)))
+        ;;(printf "~a (--pair2)~n" (cdr equation))
+        (program-iterator (cdr equation)))
+    ((null? (cdr (cdr equation)))
+        ;;(printf "~a (--null)~n" (car (cdr equation)))
+        (car (cdr equation)))
+    (else
+        (- (car (cdr equation)) (interpret-- (cdr equation))))))
+
+(define (interpret-* equation)
+    (cond
+    ((and (pair? (car (cdr equation))) (pair? (cdr (cdr equation))))
+        ;;(printf "~a (--pair1)~n" (cdr equation))
+        (* (program-iterator (cdr equation))
+        (program-iterator (cdr (cdr equation)))))
+    ((pair? (car (cdr equation)))
+        ;;(printf "~a (--pair2)~n" (cdr equation))
+        (program-iterator (cdr equation)))
+    ((null? (cdr (cdr equation)))
+        ;;(printf "~a (--null)~n" (car (cdr equation)))
+        (car (cdr equation)))
+    (else
+        (* (car (cdr equation)) (interpret-* (cdr equation))))))
+
+(define (interpret-/ equation)
+    (cond
+    ((and (pair? (car (cdr equation))) (pair? (cdr (cdr equation))))
+        ;;(printf "~a (--pair1)~n" (cdr equation))
+        (/ (program-iterator (cdr equation))
+        (program-iterator (cdr (cdr equation)))))
+    ((pair? (car (cdr equation)))
+        ;;(printf "~a (--pair2)~n" (cdr equation))
+        (program-iterator (cdr equation)))
+    ((null? (cdr (cdr equation)))
+        ;;(printf "~a (--null)~n" (car (cdr equation)))
+        (car (cdr equation)))
+    (else
+        (/ (car (cdr equation)) (interpret-/ (cdr equation))))))
+
+(define (interpret-let variable)
+    ;;(printf "~a:~a~n" (car variable) (cdr variable))
+    (cond
+    ((pair? (car (cdr (cdr variable))))
+        (program-iterator (cdr (cdr variable))))
+    ((null? (cdr (cdr (cdr variable))))
+        (variable-put! (car (cdr variable)) (car (cdr (cdr variable)))))))
+
+(define (interpret-atan function)
+    ;;(printf "~a (a-atan)~n" function)
+    (atan (car (cdr function))))
+
+(define (interpret-exp function)
+    (exp (car (cdr function))))
+
+(define (exponent-helper-function number count)
+    (cond
+    ((> count 1)
+        (* number (exponent-helper-function number (sub1 count))))
+    (else
+        number)))
+
+(define (interpret-^ function)
+    ;;(printf "~a~n" function)
+    (exponent-helper-function (car (cdr function)) (car (cdr (cdr function)))))
+
+(define (interpret-log function)
+    ;;(printf "~a~n" function)
+    (log (car (cdr function))))
+
+(define (interpret-sqrt function)
+    (sqrt (car (cdr function))))
 
 (for-each
     (lambda (pair)
@@ -148,25 +229,40 @@
     `(
         (print  ,interpret-print)
         (+      ,interpret-+)
-        ;(-)
-        ;(*)
-        ;(/)
+        (-      ,interpret--)
+        (*      ,interpret-*)
+        (/      ,interpret-/)
+        (let    ,interpret-let)
+        (atan   ,interpret-atan)
+        (exp    ,interpret-exp)
+        (^      ,interpret-^)
+        (log    ,interpret-log)
+        (sqrt   ,interpret-sqrt)
     ))
 
-;; (depricated) Traverses the 'code' in a given line of 'code'
+;; Create *variable-table*
+(define *variable-table* (make-hash))
+
+;; getter and setters for *variable-table*
+(define (variable-get key)
+    (hash-ref *variable-table* key))
+(define (variable-put! key value)
+    (hash-set! *variable-table* key value))
+
+;; Traverses the 'code' in a given line of 'code'
 (define (program-iterator construct)
     (cond
     ((pair? (car construct))
         ;;(printf "~a (pair)~n" (car construct))
         ((hash-ref *function-table* (car (car construct))) (car construct)))
-    ((null? (cdr construct))
+    ;;((null? (cdr construct))
         ;;(printf "~a (end)~n" (car construct))
-        (cdr construct))
-    (else
-        ;;(printf "~a~n" (car construct))
+        ;;(cdr construct))
+    ((not (null? (cdr construct)))
+        ;;(printf "~a (other)~n" (car construct))
         (program-iterator (cdr construct)))))
 
-;; (depricated) Traverses the lines of 'code' in a given file
+;; Traverses the lines of 'code' in a given file
 (define (interpret-program program)
     (cond 
     ((not (null? (car (car program))))
