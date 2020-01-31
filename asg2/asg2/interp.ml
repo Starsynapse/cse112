@@ -37,12 +37,20 @@ let rec interpret (program : Absyn.program) = match program with
 
 and interp_stmt (stmt : Absyn.stmt) (continuation : Absyn.program) =
     match stmt with
-    | Dim (ident, expr) -> no_stmt "Dim (ident, expr)" continuation
+    | Dim (ident, expr) -> interp_dim ident expr continuation
     | Let (memref, expr) -> interp_let memref expr continuation
     | Goto label -> no_stmt "Goto label" continuation
     | If (expr, label) -> no_stmt "If (expr, label)" continuation
     | Print print_list -> interp_print print_list continuation
     | Input memref_list -> interp_input memref_list continuation
+
+and interp_dim (ident : Absyn.ident) (expr : Absyn.expr) 
+               (continuation : Absyn.program) =
+    match expr with
+    | Number one -> (Hashtbl.add Tables.array_table ident 
+        (Array.create_float (int_of_float one));
+      Printf.printf "%s[%i]\n" ident (int_of_float one));
+    interpret continuation
 
 and interp_let (memref : Absyn.memref) (expr : Absyn.expr) 
                (continuation : Absyn.program) =
