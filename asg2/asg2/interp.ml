@@ -10,16 +10,24 @@ let want_dump = ref false
 
 let rec eval_expr (expr : Absyn.expr) : float = match expr with
     | Number number -> number
-    | Memref memref -> no_expr "eval_expr Memref"
-    | Unary (oper, expr) -> no_expr "eval_expr Unary"
-    | Binary (oper, expr1, expr2) -> binary oper expr1 expr2
+    | Memref memref -> eval_memref memref
+    | Unary (oper, expr) -> eval_unary oper expr
+    | Binary (oper, expr1, expr2) -> eval_binary oper expr1 expr2
 
-and binary (oper : Absyn.oper) (expr1 : Absyn.expr) (expr2 : Absyn.expr) =
-    Hashtbl.find Tables.binary_fn_table oper 
-    (match expr1 with Number one -> one) (match expr2 with Number two -> two)
-    (*match expr1 with
-    | Number hi -> hi*)
-    (*Hashtbl.find Tables.binary_fn_table oper 5.5 2.0*)
+and eval_memref (reference : Absyn.memref) =
+    match reference with
+    | Variable i -> Hashtbl.find Tables.variable_table i
+
+and eval_unary (oper : Absyn.oper) (expr : Absyn.expr) =
+    match expr with
+    | Number one -> Hashtbl.find Tables.unary_fn_table oper one
+    | _ -> eval_expr expr
+
+and eval_binary (oper : Absyn.oper) (expr1 : Absyn.expr) (expr2 : Absyn.expr) =
+    match expr1, expr2 with
+    | Number one, Number two -> Hashtbl.find Tables.binary_fn_table oper one two
+    | _, _ -> Hashtbl.find Tables.binary_fn_table oper 
+      (eval_expr expr1) (eval_expr expr2)
 
 let rec interpret (program : Absyn.program) = match program with
     | [] -> ()
@@ -30,11 +38,17 @@ let rec interpret (program : Absyn.program) = match program with
 and interp_stmt (stmt : Absyn.stmt) (continuation : Absyn.program) =
     match stmt with
     | Dim (ident, expr) -> no_stmt "Dim (ident, expr)" continuation
-    | Let (memref, expr) -> no_stmt "Let (memref, expr)" continuation
+    | Let (memref, expr) -> interp_let memref expr continuation
     | Goto label -> no_stmt "Goto label" continuation
     | If (expr, label) -> no_stmt "If (expr, label)" continuation
     | Print print_list -> interp_print print_list continuation
     | Input memref_list -> interp_input memref_list continuation
+
+and interp_let (memref : Absyn.memref) (expr : Absyn.expr) 
+               (continuation : Absyn.program) =
+    match memref with
+    | Variable x -> Hashtbl.add Tables.variable_table x (eval_expr expr);
+    interpret continuation
 
 and interp_print (print_list : Absyn.printable list)
                  (continuation : Absyn.program) =
