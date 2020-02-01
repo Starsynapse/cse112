@@ -20,13 +20,16 @@ and eval_memref (reference : Absyn.memref) =
 
 and eval_unary (oper : Absyn.oper) (expr : Absyn.expr) =
     match expr with
-    | Memref ref -> Hashtbl.find Tables.unary_fn_table oper (eval_expr expr)
+    | Memref ref -> 
+      Hashtbl.find Tables.unary_fn_table oper (eval_expr expr)
     | Number one -> Hashtbl.find Tables.unary_fn_table oper one
     | _ -> Hashtbl.find Tables.unary_fn_table oper (eval_expr expr)
 
-and eval_binary (oper : Absyn.oper) (expr1 : Absyn.expr) (expr2 : Absyn.expr) =
+and eval_binary (oper : Absyn.oper) (expr1 : Absyn.expr) 
+                (expr2 : Absyn.expr) =
     match expr1, expr2 with
-    | Number one, Number two -> Hashtbl.find Tables.binary_fn_table oper one two
+    | Number one, Number two -> 
+      Hashtbl.find Tables.binary_fn_table oper one two
     | _, _ -> Hashtbl.find Tables.binary_fn_table oper 
       (eval_expr expr1) (eval_expr expr2)
 
@@ -55,7 +58,8 @@ and interp_dim (ident : Absyn.ident) (expr : Absyn.expr)
 and interp_let (memref : Absyn.memref) (expr : Absyn.expr) 
                (continuation : Absyn.program) =
     match memref with
-    | Variable x -> Hashtbl.add Tables.variable_table x (eval_expr expr);
+    | Variable x -> 
+      Hashtbl.add Tables.variable_table x (eval_expr expr);
     interpret continuation
 
 and interp_goto (label : Absyn.label) (continuation : Absyn.program) =
