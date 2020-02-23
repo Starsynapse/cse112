@@ -1,6 +1,4 @@
-"(1 to: Smalltalk getArgc) do: [ :i |
-  (Smalltalk getArgv: i) displayNl
-]"
+#!/afs/cats.ucsc.edu/courses/cse112-wm/usr/smalltalk/bin/gst -f
 
 FileStream extend [
    nl := Character nl.
@@ -154,36 +152,49 @@ Object subclass: Leaf [
       visitor value: char value: string.
    ]
 
+   postOrder: visitor prefix: string [
+      visitor value: char value: string.
+   ]
+
 ].
 
 
 Leaf subclass: Tree [
-   |left right|
+    nl := Character nl.
+    |left right|
 
-   Tree class >> new: aChar count: aCount [
-      self shouldNotImplement
-   ]
+    Tree class >> new: aChar count: aCount [
+        self shouldNotImplement
+    ]
 
-   Tree class >> new: aChar count: aCount left: aLeft right: aRight [
-      |result|
-      result := super new: aChar count: aCount.
-      result setLeft: aLeft andRight: aRight.
-      ^ result
-   ]
+    Tree class >> new: aChar count: aCount left: aLeft right: aRight [
+        |result|
+        result := super new: aChar count: aCount.
+        result setLeft: aLeft andRight: aRight.
+        ^ result
+    ]
 
-   setLeft: aLeft andRight: aRight [
-      left := aLeft.
-      right := aRight.
-   ]
+    setLeft: aLeft andRight: aRight [
+        left := aLeft.
+        right := aRight.
+    ]
 
-   printOn: aStream [
-      (self printBase: aStream) << ',' << left << ',' << right << ')'.
-   ]
+    printOn: aStream [
+        (self printBase: aStream) << ',' << left << ',' << right << ')'.
+    ]
 
-   depthFirst: visitor prefix: string [
-      left depthFirst: visitor prefix: string, '0'.
-      right depthFirst: visitor prefix: string, '1'.
-   ]
+    depthFirst: visitor prefix: string [
+        left depthFirst: visitor prefix: string, '0'.
+        right depthFirst: visitor prefix: string, '1'.
+    ]
+
+    postOrder: visitor prefix: string [
+        |selfNode|
+        selfNode := 'Node'.
+        left postOrder: visitor prefix: string, '0'.
+        right postOrder: visitor prefix: string, '1'.
+        visitor value: 1 value: 'Node'.
+    ]
 
 ].
 
@@ -201,7 +212,7 @@ sortcol do: [:item |
    stdout << item << nl.
 ].
 
-|full_tree|
+|decoding_tree|
 
 stdout << nl << 'Before remove loop.' << nl.
 [sortcol notEmpty] whileTrue: [
@@ -214,27 +225,60 @@ stdout << nl << 'Before remove loop.' << nl.
             sortcol add: t.
         ]
         ifFalse: [
-            full_tree := first.
+            decoding_tree := first.
         ]
 ].
 
-stdout << full_tree << nl.
-encoding_string := Set new.
+stdout << decoding_tree << nl.
+encoding_set := Set new.
 
 |tree_dfs_size|
 tree_dfs_size := 0.
-stdout << nl << 'Before visiting full_tree Tree' << nl.
-full_tree depthFirst: [:char :string |
+stdout << nl << 'Before visiting decoding_tree Tree' << nl.
+decoding_tree depthFirst: [:char :string |
     stdout << '[' << char << ']=' << string << nl.
-    encoding_string add: string.
+    encoding_set add: string.
     tree_dfs_size := tree_dfs_size + 1.
 ] prefix: ''.
 
-stdout << encoding_string << nl.
+stdout << encoding_set << nl.
 
-stdout << option << nl.
+stdout << nl << option << nl.
 
-option = '-t'
+|encoding_string node_count|
+encoding_string := ''.
+node_count := 0.
+option = '-c'
     ifTrue: [
-        stdout << 'yay' << nl.
-    ]
+        decoding_tree postOrder: [:char :string |
+            "stdout << char << ' ' << string << ' ' << string size << nl."
+            string = 'Node'
+                ifTrue: [
+                    temp_bin := 1 asString.
+                    encoding_string := encoding_string, temp_bin.
+                ]
+                ifFalse: [
+                    eight := char bitAt: 9.
+                    seven := char bitAt: 8.
+                    six := char bitAt: 7.
+                    five := char bitAt: 6.
+                    four := char bitAt: 5.
+                    three := char bitAt: 4.
+                    two := char bitAt: 3.
+                    one := char bitAt: 2.
+                    zero := char bitAt: 1.
+
+                    temp_bin := eight asString, seven asString, six asString,
+                        five asString, four asString, three asString,
+                        two asString, one asString, zero asString.
+
+                    "stdout << eight << seven << six << five << four <<
+                        three << two << one << zero << nl."
+                    encoding_string := encoding_string, temp_bin.
+                ].
+
+            "stdout << encoding_string << nl."
+        ] prefix: ''.
+    ].
+
+stdout << encoding_string << nl.
