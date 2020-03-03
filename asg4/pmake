@@ -18,16 +18,21 @@ my @args = @ARGV;
 my %options=();
 getopts("d", \%options);
 
+# print scalar(@args);
 # print scalar(%options);
 
 my $target_argument;
 if (scalar(@args) == 2) {
     $target_argument = $args[1];
-    print "$target_argument\n";
+    # print "$target_argument\n";
 }
 if (scalar(@args) == 1) {
     $target_argument = $args[0];
-    print "$target_argument\n";
+    # print "$target_argument\n";
+}
+if (scalar(@args) == 0) {
+    $target_argument = "all";
+    # print "$target_argument\n";
 }
 
 #Load Makefile into array
@@ -85,15 +90,15 @@ foreach my $row (@makefile_array) {
 
 while(my($key,$val)=each(%target_numbers)) {
     my @array = @{$val};
-    print "key='$key', val='@array'";
+    # print "key='$key', val='@array'";
 }
 
-print "\n";
-print "\n";
-foreach my $row (@makefile_array) {
-    print $row;
-}
-print "\n";
+# print "\n";
+# print "\n";
+# foreach my $row (@makefile_array) {
+#     print $row;
+# }
+# print "\n";
 
 #Parse through Makefile
 my $new_command = 0;
@@ -148,17 +153,17 @@ foreach my $row (@makefile_array) {
 # }
 # print %target_instructions;
 
-while(my($key,$val)=each(%target_instructions)) {
-    my @array = @{$val};
-    print "key='$key', val='@array'\n";
-}
-print "\n";
+# while(my($key,$val)=each(%target_instructions)) {
+#     my @array = @{$val};
+#     print "key='$key', val='@array'\n";
+# }
+# print "\n";
 
-while(my($key,$val)=each(%target_dependencies)) {
-    my @array = @{$val};
-    print "key='$key', val='@array'\n";
-}
-print "\n";
+# while(my($key,$val)=each(%target_dependencies)) {
+#     my @array = @{$val};
+#     print "key='$key', val='@array'\n";
+# }
+# print "\n";
 
 foreach my $row (@makefile_array) {
     if ($row =~ /\W+(?=:)/) {
@@ -194,6 +199,7 @@ foreach my $row (@makefile_array) {
                 }
             }
 
+            # Again, could probs be made into a subroutine
             foreach my $num (@command_numbers) {
                 my $command_to_execute = $command_list[$num];
                 # print $command_to_execute;
