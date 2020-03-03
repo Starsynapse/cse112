@@ -11,42 +11,24 @@ use Switch;
 # print "Hello World!\n";
 
 
-open(my $fh, "<", "score/test0/Makefile")
-    or die "Can't open < score/test0/Makefile";
+open(my $fh, "<", "Makefile")
+    or die "Can't open < Makefile";
 
-my $target_argument = $ARGV[1];
-# print $ARGV[1];
-# print "\n";
+my @args = @ARGV;
+my %options=();
+getopts("d", \%options);
 
-my $opt_x = getopts('d:');
+# print scalar(%options);
 
-# my %hash;
-# while (my $row = <$fh>) {
-#     my @chars = split //, $row;
-#     my $len = split //, $row;
-#     my $first_char = $chars[0];
-#     if ($first_char ne '#' and $first_char ne "\n") {
-#         print "$row";
-        
-#     }
-
-#     # my @words = split / /, $row;
-#     # foreach my $word (@words) {
-#     #     if ($word ne ':' and $word ne '-') {
-#     #         print ":$word ";
-#     #     }
-#     # }
-
-#     # my @words = split /\t/, $row;
-#     # foreach my $word (@words) {
-#     #     if ($word ne ':' and $word ne '-') {
-#     #         print ":$word ";
-#     #     }
-#     #     if ($first_char eq "\t") {
-#     #         print "!!!!!!!!!!";
-#     #     }
-#     # }
-# }
+my $target_argument;
+if (scalar(@args) == 2) {
+    $target_argument = $args[1];
+    print "$target_argument\n";
+}
+if (scalar(@args) == 1) {
+    $target_argument = $args[0];
+    print "$target_argument\n";
+}
 
 #Load Makefile into array
 my @makefile_array;
@@ -61,12 +43,6 @@ while (my $row = <$fh>) {
     if ($first_char ne '#' and $first_char ne "\n") {
         $makefile_array[$array_count] = $row;
         $array_count++;
-
-        # if ($first_char ne "\t") {
-        #     $row =~ /\W+(?=:)/;
-        #     $target_number{$`}=$command_count;
-        #     $command_count++;
-        # }
     }
 
     if ($row =~ /(?<=\t)/) {
@@ -149,17 +125,9 @@ foreach my $row (@makefile_array) {
     }
     my @dependencies;
     if ($new_command == 0) {
-        # $row =~ /(?<=\t)/;
-        # $current_command = $';
 
         # print "$current_target,$current_dependencies\n";
         @dependencies = split / /, $current_dependencies;
-
-        # foreach my $dependency (@dependencies) {
-        #     my $dn = $target_numbers{$dependency};
-        #     push(@dependency_list, $dn);
-        # }
-        # my $dl = \@dependency_list;
         $target_dependencies{$current_target} = \@dependencies;
 
         if (scalar(@dependencies) > 0) {
