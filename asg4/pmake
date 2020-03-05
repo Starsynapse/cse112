@@ -8,9 +8,6 @@ use Getopt::Std;
 use Switch;
 
 
-# print "Hello World!\n";
-
-
 open(my $fh, "<", "Makefile")
     or die "Can't open < Makefile";
 
@@ -18,6 +15,7 @@ my @args = @ARGV;
 my %options=();
 getopts("d", \%options);
 
+# print "@args\n";
 # print scalar(@args);
 # print scalar(%options);
 
@@ -35,7 +33,7 @@ if (scalar(@args) == 0) {
     # print "$target_argument\n";
 }
 
-#Load Makefile into array
+#Load Makefile into array and organize commands into array
 my @makefile_array;
 my $array_count = 0;
 my @command_list; # list of commands
@@ -55,6 +53,7 @@ while (my $row = <$fh>) {
     }
 }
 
+# Map the targets to their commands
 my %target_numbers; # map of target to locations in @command_list
 my $dependent;
 my $targ;
@@ -88,10 +87,10 @@ foreach my $row (@makefile_array) {
     }
 }
 
-while(my($key,$val)=each(%target_numbers)) {
-    my @array = @{$val};
-    # print "key='$key', val='@array'";
-}
+# while(my($key,$val)=each(%target_numbers)) {
+#     my @array = @{$val};
+#     print "key='$key', val='@array'";
+# }
 
 # print "\n";
 # print "\n";
@@ -100,7 +99,8 @@ while(my($key,$val)=each(%target_numbers)) {
 # }
 # print "\n";
 
-#Parse through Makefile
+# Organize the targets with their instructions
+# and the targets with their dependencies
 my $new_command = 0;
 my %target_instructions;
 my %target_dependencies;
@@ -120,7 +120,6 @@ foreach my $row (@makefile_array) {
         $new_command = 1;
     }
 
-
     if ($new_command == 1) {
         $row =~ /\W+(?=:)/;
         $current_target = $`;
@@ -128,6 +127,7 @@ foreach my $row (@makefile_array) {
         $current_dependencies = $';
         chomp($current_dependencies);
     }
+
     my @dependencies;
     if ($new_command == 0) {
 
@@ -137,10 +137,21 @@ foreach my $row (@makefile_array) {
 
         if (scalar(@dependencies) > 0) {
             foreach my $dependency (@dependencies) {
-                my $d = $target_numbers{$dependency};
-                my @dd = @{$d};
-                # print "$d, @dd\n";
-                $target_instructions{$dependency} = $d;
+                if ($dependency =~ /\.c|\.h|Makefile/) {
+                    unless (-e $dependency) {
+                        print "", (join " ", 
+                        "make: *** No rule to make target",
+                        "'$dependency', needed by '$current_target'.",
+                        "Stop.\n");
+                        exit 1;
+                    }
+                }
+                else {
+                    my $d = $target_numbers{$dependency};
+                    my @dd = @{$d};
+                    # print "$d, @dd\n";
+                    $target_instructions{$dependency} = $d;
+                }
             }
         }
     }
@@ -165,12 +176,38 @@ foreach my $row (@makefile_array) {
 # }
 # print "\n";
 
+# Retreives the target's commands and executes them
+sub retreive_and_execute_command {
+    my @numbers = @_;
+
+    foreach my $num (@numbers) {
+        my $command_to_execute = $command_list[$num];
+        # print $command_to_execute;
+
+        if ($command_to_execute =~ /(?<=@)/) {
+            $' =~ /(?<=\s)/;
+            $command_to_execute = $';
+        }
+        else {
+            print $command_to_execute;
+        }
+
+        system($command_to_execute);
+    }
+}
+
+# Main 'make' program
 foreach my $row (@makefile_array) {
     if ($row =~ /\W+(?=:)/) {
         $current_target = $`;
         # print "$current_target\n";
 
         if ($current_target eq $target_argument) {
+            if (-e $current_target) {
+                print "make: '$current_target' is up to date.\n";
+                exit 0;
+            }
+
             my $cn = $target_numbers{$current_target};
             my @command_numbers = @{$cn};
             my $dt = $target_dependencies{$current_target};
@@ -178,42 +215,16 @@ foreach my $row (@makefile_array) {
             # print "t:@command_numbers\n";
             # print "d:@dependent_targets\n";
 
-            # Could probably be converted into subroutine
             foreach my $t (@dependent_targets) {
                 # print "dep: $t\n";
-                my @t_nums = @{$target_numbers{$t}};
-                # print "@t_nums\n";
-                foreach my $num (@t_nums) {
-                    my $command_to_execute = $command_list[$num];
-                    # print $command_to_execute;
-
-                    if ($command_to_execute =~ /(?<=@)/) {
-                        $' =~ /(?<=\s)/;
-                        $command_to_execute = $';
-                    }
-                    else {
-                        print $command_to_execute;
-                    }
-
-                    system($command_to_execute);
+                unless ($t =~ /\.c|\.h|Makefile/) {
+                    my @t_nums = @{$target_numbers{$t}};
+                    # print "@t_nums\n";
+                    retreive_and_execute_command(@t_nums);
                 }
             }
 
-            # Again, could probs be made into a subroutine
-            foreach my $num (@command_numbers) {
-                my $command_to_execute = $command_list[$num];
-                # print $command_to_execute;
-
-                if ($command_to_execute =~ /(?<=@)/) {
-                    $' =~ /(?<=\s)/;
-                    $command_to_execute = $';
-                }
-                else {
-                    print $command_to_execute;
-                }
-
-                system($command_to_execute);
-            }
+            retreive_and_execute_command(@command_numbers);
         }
     }
 }
