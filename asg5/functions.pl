@@ -45,37 +45,56 @@ writepath( [Head|Tail]) :-
    write( ' '), write( Head), writepath( Tail).
 
 listpath( Node, End, Outlist) :-
-   listpath( Node, End, [Node], Outlist).
+   listpath( Node, End, [Node], Outlist, [time(0,0)]).
 
-listpath( Node, Node, _, [Node]).
-listpath( Node, End, Tried, [Node|List]) :-
+listpath( Node, Node, _, [f(Node,na(0,0),na(0,0))], _).
+listpath( Node, End, Tried, [f(Node,Time,Next,Arrival)|List], Times) :-
     flight( Node, Next, Time),
-    distance(Node, Next, Distance),
-    writef("%w %w %w\n", [Node, Next, Distance]),
-    writeln(Tried),
-    % checkTime(Time),
     not( member( Next, Tried)),
-    writeln("Fiesta!"),
-    listpath( Next, End, [Next|Tried], List).
+    % writef("%w %w %w %w\n", [Node, Next, Time, Distance]),
+    % writeln(Tried),
+    checkDeparture(Time, Times),
+    distance(Node, Next, Distance),
+    computeArrival(Time, Distance, Arrival),
+    % writeln(Arrival),
+    % Soup = [Time|Times],
+    % writeln(Soup),
+    % writeln(Node),
+    listpath( Next, End, [Next|Tried], List, [Time|Times]).
 
-checkTime(Time) :-
-    writeln(Time),
-    arg(1, Time, Hour),
-    arg(2, Time, Minute),
-    append([[Hour, Minute]], ListA, ListB),
-    writeln(ListB).
+checkDeparture(Time, [Last|Times]) :-
+    % writef("%w %w %w\n", [Time, Last, Times]),
+    % writeln(Times),
+    arg(1, Time, HourNow),
+    arg(2, Time, MinuteNow),
+    arg(1, Last, HourLast),
+    arg(2, Last, MinuteLast),
+    compareTime(HourNow, HourLast).
+
+compareTime(T1, T2) :-
+    T1 >= T2.
+
+computeArrival(Departure, Distance, Arrival) :-
+    arg(1, Departure, DepHour),
+    arg(2, Departure, DepMinute),
+    planeSpeed(Speed),
+    FlightTime is Distance / Speed,
+    AddHours is floor(FlightTime),
+    M is FlightTime - AddHours,
+    AddMinutes is M * 60,
+    ArrivalH is DepHour + AddHours,
+    ArrivalM is floor(DepMinute + AddMinutes),
+    Arrival = time(ArrivalH, ArrivalM).
+
 
 % on(Item,[Item|Rest]).
 % on(Item,[DisregardHead|Tail]):-
 %     on(Item,Tail).
-
-nope(N, L) :-
-    memberchk(N, L) -> false; true.
     
 
-append([],List,List).
-append([Head|Tail],List2,[Head|Result]):-
-    append(Tail,List2,Result).
+% append([],List,List).
+% append([Head|Tail],List2,[Head|Result]):-
+%     append(Tail,List2,Result).
 
 haversine(Lat1, Lat2, Lon1, Lon2, D) :-
     earthRadius(R),
@@ -103,8 +122,47 @@ distance(Code1, Code2, Distance) :-
     
     haversine(LatRad1, LatRad2, LongRad1, LongRad2, Distance).
 
-fly(Code1, Code2) :- 
-    listpath(sfo, mia, Out),
-    writeln(Out),
-    distance(Code1, Code2, Distance).
-    % writeln(Distance).
+printEverything(R, I) :- I =< 1, !.
+printEverything([F|R], Int) :-
+    % writeln(Int),
+    arg(1, F, Code),
+    arg(2, F, Departure),
+    arg(3, F, DestinationCode),
+    arg(4, F, Arrival),
+    % writef("%w %w %w %w\n", [Code, Departure, DestinationCode, Arrival]),
+    airport( Code, Name, Nlat, Wlong),
+    airport( DestinationCode, Name2, Nlat2, Wlong2),
+    % writeln("AAAAAA"),
+    arg(1, Departure, Dhour),
+    arg(2, Departure, Dmin),
+    print_flight('depart', Code, Name, Dhour, Dmin),
+    arg(1, Arrival, Ahour),
+    arg(2, Arrival, Amin),
+    print_flight('arrive', DestinationCode, Name2, Ahour, Amin),
+    I is Int - 1,
+    printEverything(R, I), !.
+
+pad2( Num, Padded) :- Num < 10, string_concat( '0', Num, Padded).
+pad2( Num, Num).
+
+print_flight( Activity, Code, Name, Hour, Min) :-
+    write( Activity), write( '  '),
+    string_upper( Code, Upper),
+    write( Upper), write( ' '), write( Name), write( ' '),
+    pad2( Hour, Hour2), write( Hour2), write( ':'),
+    pad2( Min, Min2), write( Min2), nl.
+
+test_print :-
+    print_flight( 'depart', lax, 'Los Angeles     ', 14, 22),
+    print_flight( 'arrive', sfo, 'San Francisco   ', 15, 29),
+    print_flight( 'depart', sfo, 'San Francisco   ', 16, 02),
+    print_flight( 'arrive', sea, 'Seattle-Tacoma  ', 17, 42).
+
+
+
+fly(Code1, Code2) :-
+    listpath(Code1, Code2, Out),
+    % writeln(Out),
+    length(Out, Int),
+    % writeln(Int),
+    printEverything(Out, Int), !.
